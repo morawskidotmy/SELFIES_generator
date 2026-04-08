@@ -1,40 +1,31 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+
+from multiprocessing import Process, Queue, cpu_count
 
 import numpy as np
 from rdkit.Chem import CanonSmiles
-from multiprocessing import Process, Queue, cpu_count
+
+from utils import smiles_to_selfies
 
 
 def keep_longest(smls):
-    """ function to keep the longest fragment of a smiles string after fragmentation by splitting at '.'
-
-    :param smls: {list} list of smiles strings
-    :return: {list} list of longest fragments
-    """
-    out = list()
+    out = []
     for s in smls:
-        if '.' in s:
-            f = s.split('.')
-            lengths = [len(m) for m in f]
-            n = np.argmax(lengths)
-            out.append(f[n])
+        if "." in s:
+            f = s.split(".")
+            out.append(f[np.argmax([len(m) for m in f])])
         else:
             out.append(s)
     return out
 
 
 def harmonize_sc(mols):
-    """ harmonize the sidechains of given SMILES strings to a normalized format
-
-    :param mols: {list} molecules as SMILES string
-    :return: {list} harmonized molecules as SMILES string
-    """
-    out = list()
+    out = []
     for mol in mols:
-        # TODO: add more problematic sidechain representation that occur
-        pairs = [('[N](=O)[O-]', '[N+](=O)[O-]'),
-                 ('[O-][N](=O)', '[O-][N+](=O)')]
+        pairs = [
+            ("[N](=O)[O-]", "[N+](=O)[O-]"),
+            ("[O-][N](=O)", "[O-][N+](=O)"),
+        ]
         for b, a in pairs:
             mol = mol.replace(b, a)
         out.append(mol)
@@ -42,29 +33,38 @@ def harmonize_sc(mols):
 
 
 def preprocess_smiles(smiles, stereochem=1):
-    """ desalt, canonicalize and harmonize side chains of molecules in a list of smiles strings
 
-    :param smiles: {list} list of SMILES strings
-    :param stereochem: {[0, 1]} whether stereochemistry should be considered (1) or not (0)
-    :return: list of preprocessed SMILES strings
-    """
     def process(s, q):
         smls = keep_longest(s)
         smls = harmonize_sc(smls)
-        mols = list()
-        for s in smls:
+        mols = []
+        for smi in smls:
             try:
-                mols.append(CanonSmiles(s, stereochem))
+                mols.append(CanonSmiles(smi, stereochem))
             except Exception:
-                print("Error! Can not process SMILES string %s" % s)
+                print(f"Error! Cannot process SMILES string {smi}")
         q.put(mols)
 
     print("Preprocessing...")
     queue = Queue()
     for m in np.array_split(np.array(smiles), cpu_count()):
-        p = Process(target=process, args=(m, queue,))
+        p = Process(target=process, args=(m, queue))
         p.start()
     rslt = []
     for _ in range(cpu_count()):
         rslt.extend(queue.get(10))
-    return np.random.choice(rslt, len(rslt), replace=False)  # return shuffled
+    return np.random.choice(rslt, len(rslt), replace=False).tolist()
+
+
+def smiles_list_to_selfies(smiles_list):
+    selfies_list = []
+    failed = 0
+    for smi in smiles_list:
+        sel = smiles_to_selfies(smi)
+        if sel is not None:
+            selfies_list.append(sel)
+        else:
+            failed += 1
+    if failed:
+        print(f"  {failed}/{len(smiles_list)} SMILES could not be converted to SELFIES")
+    return selfies_list

@@ -101,3 +101,10 @@ logs/
 plots/
 generated/
 data/
+
+# uv
+.venv/
+uv.lock
+
+# ruff
+.ruff_cache/
