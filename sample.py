@@ -37,7 +37,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--frag", type=str, default="^", help="Fragment to grow SELFIES from. default: start character '^'"
     )
-    parser.add_argument("--seed", type=float, default=42, help="random seed")
+    parser.add_argument("--seed", type=int, default=42, help="random seed")
     args = parser.parse_args()
-    with tf.device("/GPU:0"):
-        main(args)
+    main(args)

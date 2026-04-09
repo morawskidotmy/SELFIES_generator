@@ -60,13 +60,13 @@ if __name__ == "__main__":
         "--stereo", type=int, default=0, help="whether stereo chemistry information should be included [0, 1]"
     )
     parser.add_argument(
-        "--reinforce", type=bool, default=False, help="add most similar but novel generated mols back to training"
+        "--reinforce", action="store_true", default=False, help="add most similar but novel generated mols back to training"
     )
     parser.add_argument(
         "--ref", type=str, default=None, help="reference molecule (SMILES) for reinforcement similarity"
     )
     parser.add_argument("--val", type=float, default=0.1, help="fraction of data for validation")
-    parser.add_argument("--seed", type=float, default=42, help="random seed")
+    parser.add_argument("--seed", type=int, default=42, help="random seed")
     parser.add_argument(
         "--reward", type=str, default=None, help="reward function for property-guided training (qed, logp, mw, tpsa)"
     )
@@ -75,6 +75,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    strategy = tf.distribute.MirroredStrategy(tf.config.list_logical_devices("GPU"))
-    with tf.device("/gpu:0"):
-        main(args)
+    main(args)

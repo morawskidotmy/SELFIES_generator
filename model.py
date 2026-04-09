@@ -161,10 +161,22 @@ class SELFIESmodel:
             metrics=["accuracy"],
         )
 
+    def _log_scalar(self, writer, name, value, step):
+        try:
+            with writer.as_default():
+                tf.summary.scalar(name, value, step=step)
+        except Exception:
+            pass
+
     def train_model(self, n_sample=100):
         print("Training model...")
         log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-        writer = tf.summary.create_file_writer(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
+        try:
+            writer = tf.summary.create_file_writer(log_dir)
+        except Exception:
+            writer = None
+        os.makedirs("./generated", exist_ok=True)
         mol_file = open("./generated/" + self.run_name + "_generated.csv", "a")
 
         for i in range(self.num_epochs):
@@ -187,23 +199,21 @@ class SELFIESmodel:
                     gen_train,
                     epochs=1,
                     validation_data=gen_val,
-                    use_multiprocessing=self.multi,
-                    workers=self.workers,
                     callbacks=[chkpntr],
                 )
-                with writer.as_default():
-                    tf.summary.scalar("val_loss", history.history["val_loss"][-1], step=i)
+                if writer:
+                    self._log_scalar(writer, "val_loss", history.history["val_loss"][-1], i)
             else:
                 gen = DataGenerator(
                     self.token_seqs, range(self.n_mols), self.maxlen - 1, self.n_chars, self.step, self.batch_size
                 )
                 history = self.model.fit(
-                    gen, epochs=1, use_multiprocessing=self.multi, workers=self.workers, callbacks=[chkpntr]
+                    gen, epochs=1, callbacks=[chkpntr]
                 )
 
-            with writer.as_default():
-                tf.summary.scalar("loss", history.history["loss"][-1], step=i)
-                tf.summary.scalar("lr", float(self.model.optimizer.learning_rate), step=i)
+            if writer:
+                self._log_scalar(writer, "loss", history.history["loss"][-1], i)
+                self._log_scalar(writer, "lr", float(self.model.optimizer.learning_rate), i)
 
             if (i + 1) % self.sample_after == 0:
                 valid_mols = self.sample_points(n_sample, self.temp)
@@ -221,16 +231,16 @@ class SELFIESmodel:
                         rewards = [self.reward_fn(s) for s in valid_mols]
                         mean_reward = np.mean(rewards)
                         print(f"Mean reward: {mean_reward:.4f}")
-                        with writer.as_default():
-                            tf.summary.scalar("mean_reward", mean_reward, step=i)
+                        if writer:
+                            self._log_scalar(writer, "mean_reward", mean_reward, i)
                 else:
                     novel = []
                     n_novel = 0
 
-                with writer.as_default():
-                    tf.summary.scalar("valid", float(n_valid) / n_sample, step=i)
-                    tf.summary.scalar("novel", n_novel, step=i)
-                    tf.summary.scalar("unique_valid", len(set(valid_mols)), step=i)
+                if writer:
+                    self._log_scalar(writer, "valid", float(n_valid) / n_sample, i)
+                    self._log_scalar(writer, "novel", n_novel, i)
+                    self._log_scalar(writer, "unique_valid", len(set(valid_mols)), i)
                 print(f"\nValid:\t{n_valid}/{n_sample}")
                 print(f"Unique:\t{len(set(valid_mols))}")
                 print(f"Novel:\t{len(novel)}\n")
@@ -284,8 +294,8 @@ class SELFIESmodel:
         rewards = np.array([self.reward_fn(s) for s in valid_mols])
         baseline = np.mean(rewards)
 
-        xs, ys = [], []
-        for smi in valid_mols:
+        xs, ys, valid_rewards = [], [], []
+        for i, smi in enumerate(valid_mols):
             sel = smiles_to_selfies(smi)
             if sel is None:
                 continue
@@ -296,6 +306,7 @@ class SELFIESmodel:
             indices = [int(self.token_indices.get(t, 0)) for t in tokens]
             xs.append(indices[:-1])
             ys.append(indices[1:])
+            valid_rewards.append(rewards[i])
 
         if len(xs) == 0:
             return 0.0
@@ -304,7 +315,7 @@ class SELFIESmodel:
         y_ohe = one_hot_encode(ys, self.n_chars)
         x_tensor = tf.convert_to_tensor(x_ohe, dtype=tf.float32)
         y_tensor = tf.convert_to_tensor(y_ohe, dtype=tf.float32)
-        r_tensor = tf.convert_to_tensor(rewards[: len(xs)], dtype=tf.float32)
+        r_tensor = tf.convert_to_tensor(valid_rewards, dtype=tf.float32)
 
         with tf.GradientTape() as tape:
             preds = self.model(x_tensor, training=True)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
+import os
 from argparse import ArgumentParser
 
-import tensorflow as tf
 from rdkit.Chem import MolFromSmiles
 
 from descriptors import cats_descriptor, numpy_fps, numpy_maccs, parallel_pairwise_similarities
@@ -11,6 +11,7 @@ from utils import compare_mollists
 
 
 def main(flags):
+    os.makedirs("./plots", exist_ok=True)
     generated = [line.strip() for line in open(flags.generated)]
     reference = [line.strip() for line in open(flags.reference)]
     novels = compare_mollists(generated, reference, False)
@@ -72,5 +73,4 @@ if __name__ == "__main__":
     parser.add_argument("--fingerprint", type=str, default="ECFP4", help="fingerprint type: MACCS, ECFP4, or CATS")
     args = parser.parse_args()
 
-    with tf.device("/GPU:0"):
-        main(args)
+    main(args)

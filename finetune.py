@@ -2,8 +2,6 @@
 
 from argparse import ArgumentParser
 
-import tensorflow as tf
-
 from model import SELFIESmodel
 
 
@@ -36,6 +34,9 @@ def main(flags):
 
     vocab_path = flags.model + "vocab.json"
     model.load_vocab(vocab_path)
+    model._tokenize_all()  # re-tokenize with pretrained vocab
+    model.save_vocab()     # save vocab to new checkpoint dir
+
     model.load_model_from_file(checkpoint_dir=flags.model, epoch=flags.epoch)
     model.model.layers[1].trainable = False  # freeze first LSTM layer
     model.model.compile(loss="categorical_crossentropy", optimizer=model.model.optimizer, metrics=["accuracy"])
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         "--reference", type=str, default="", help="reference molecule (SMILES) for reinforcement similarity"
     )
     parser.add_argument("--val", type=float, default=0.0, help="fraction of data for validation")
-    parser.add_argument("--seed", type=float, default=42, help="random seed")
+    parser.add_argument("--seed", type=int, default=42, help="random seed")
     parser.add_argument("--workers", type=int, default=-1, help="number of threads for the data generator")
     parser.add_argument(
         "--reward", type=str, default=None, help="reward function for property-guided training (qed, logp, mw, tpsa)"
@@ -99,5 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--pg_sample", type=int, default=64, help="number of molecules to sample per PG step")
     args = parser.parse_args()
 
-    with tf.device("/GPU:0"):
-        main(args)
+    if not args.model.endswith("/"):
+        args.model += "/"
+
+    main(args)

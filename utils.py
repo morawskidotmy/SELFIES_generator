@@ -176,12 +176,16 @@ def randomize_smileslist(smiles, num=10, isomeric=True):
         q.put(res)
 
     queue = Queue()
+    procs = []
     rslt = []
     for chunk in np.array_split(np.array(smiles), cpu_count()):
         p = Process(target=_one_random, args=(chunk, num, isomeric, queue))
         p.start()
-    for _ in range(cpu_count()):
-        rslt.extend(queue.get(timeout=30))
+        procs.append(p)
+    for _ in range(len(procs)):
+        rslt.extend(queue.get(timeout=600))
+    for p in procs:
+        p.join(timeout=10)
     return list(set(rslt))
 
 
@@ -197,12 +201,16 @@ def inchikey_from_smileslist(smiles):
         q.put(res)
 
     queue = Queue()
+    procs = []
     rslt = []
     for chunk in np.array_split(np.array(smiles), cpu_count()):
         p = Process(target=_one_inchi, args=(chunk, queue))
         p.start()
-    for _ in range(cpu_count()):
-        rslt.extend(queue.get(timeout=10))
+        procs.append(p)
+    for _ in range(len(procs)):
+        rslt.extend(queue.get(timeout=600))
+    for p in procs:
+        p.join(timeout=10)
     return list(rslt)
 
 

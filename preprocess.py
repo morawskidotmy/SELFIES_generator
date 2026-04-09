@@ -47,12 +47,16 @@ def preprocess_smiles(smiles, stereochem=1):
 
     print("Preprocessing...")
     queue = Queue()
+    procs = []
     for m in np.array_split(np.array(smiles), cpu_count()):
         p = Process(target=process, args=(m, queue))
         p.start()
+        procs.append(p)
     rslt = []
-    for _ in range(cpu_count()):
-        rslt.extend(queue.get(10))
+    for _ in range(len(procs)):
+        rslt.extend(queue.get(timeout=600))
+    for p in procs:
+        p.join(timeout=10)
     return np.random.choice(rslt, len(rslt), replace=False).tolist()
 
 
