@@ -2,7 +2,7 @@
 
 [![Ruff](https://github.com/morawskidotmy/selfies_generator/actions/workflows/ruff.yml/badge.svg)](https://github.com/morawskidotmy/selfies_generator/actions/workflows/ruff.yml)
 
-SELFIES-based generative RNN for molecule *de novo* design with property-guided generation.
+SELFIES-based generative RNN for molecule *de novo* design with property-guided generation. This project is a fork of https://github.com/alexarnimueller/SMILES_generator.
 
 ## Introduction
 
