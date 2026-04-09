@@ -4,6 +4,8 @@
 
 SELFIES-based generative RNN for molecule *de novo* design with property-guided generation. This project is a fork of https://github.com/alexarnimueller/SMILES_generator.
 
+This project uses the [`.sfi` file format](https://github.com/morawskidotmy/.sfi) for SELFIES molecular data.
+
 ## Introduction
 
 This repository uses generative recurrent neural networks (RNN) with LSTM cells to learn molecular structures represented as **SELFIES** (SELF-referencIng Embedded Strings). SELFIES provide a 100% robust molecular string representation — every SELFIES string decodes to a valid molecule, eliminating the invalid-molecule problem inherent to SMILES.

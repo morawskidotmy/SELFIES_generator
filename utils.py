@@ -129,10 +129,18 @@ def is_valid_mol(selfies_str, return_smiles=False):
 def read_smiles_file(dataset):
     smls = []
     print(f"Reading {dataset}...")
+    is_sfi = dataset.endswith(".sfi")
     with open(dataset) as f:
         for line in f:
             s = line.strip()
-            if s:
+            if not s or s.startswith("#"):
+                continue
+            if is_sfi:
+                selfies_str = s.split()[0]
+                smi = selfies_to_smiles(selfies_str)
+                if smi:
+                    smls.append(smi)
+            else:
                 smls.append(s)
     return smls
 

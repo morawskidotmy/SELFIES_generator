@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 import tensorflow as tf
 
 from model import SELFIESmodel
+from utils import smiles_to_selfies
 
 
 def main(flags):
@@ -20,7 +21,13 @@ def main(flags):
     valid_mols = model.sample_points(n_sample=flags.num, temp=flags.temp, prime_text=prime)
 
     with open(flags.out, "w") as f:
-        f.write("\n".join(set(valid_mols)))
+        if flags.out.endswith(".sfi"):
+            for smi in set(valid_mols):
+                sel = smiles_to_selfies(smi)
+                if sel:
+                    f.write(f"{sel}\t{smi}\n")
+        else:
+            f.write("\n".join(set(valid_mols)))
     print(f"Valid: {len(valid_mols)}/{flags.num}")
     print(f"Unique: {len(set(valid_mols))}")
 
